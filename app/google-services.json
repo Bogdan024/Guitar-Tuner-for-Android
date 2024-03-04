@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "399101918807",
+    "project_id": "licentachitarafirebase",
+    "storage_bucket": "licentachitarafirebase.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:399101918807:android:3764b7db62f79cf8aded12",
+        "android_client_info": {
+          "package_name": "com.example.licentachitara"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyADOevWn4HLiryHaNSokTOF_wFHriE18Pc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
