@@ -49,7 +49,11 @@ public class PermissionActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         Log.d(TAG,"On resume");
-        askForPermission();
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
+        {
+            startActivity(new Intent(PermissionActivity.this, LogInActivity.class ));
+            finish();
+        }
     }
 
     private void changeSettingsPermission()
