@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_activated="true">
+        <shape android:shape="oval">
+            <solid android:color="#8011C3F8" /> <!-- Semi-transparent gold when activated -->
+            <stroke android:width="4dp" android:color="#181822" /> <!-- Gold border -->
+            <size android:width="50dp" android:height="50dp"/> <!-- Equal width and height for a circle -->
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#803F6B78" /> <!-- Semi-transparent white when not activated -->
+            <stroke android:width="3dp" android:color="#333339" /> <!-- White border -->
+            <size android:width="50dp" android:height="1dp"/> <!-- Equal width and height for a circle -->
+        </shape>
+    </item>
+</selector>
