@@ -22,6 +22,8 @@
 #include <fftw3.h>
 #include <math.h>
 #include <android/log.h>
+#include <stdio.h>
+#include <complex.h>
 
 //#define FFT_SIZE 3584
 #define TAG "From Native"
@@ -34,55 +36,171 @@
 
 extern "C"
 JNIEXPORT double JNICALL
-Java_com_example_licentachitara_MainActivity_FFTAnalyze(JNIEnv *env, jobject thiz,
+Java_com_example_licentachitara_MainActivity_FFTAnalyze(JNIEnv *env, jobject main,
                                                         jdoubleArray audioSamples, jint FFT_SIZE) {
-    // TODO: implement FFTAnalyze()
 
     jdouble *audioData = env->GetDoubleArrayElements(audioSamples, NULL);
-
-    LOGI("FFT SIZE THE BUFFERSIZE %d", FFT_SIZE);
-
-    //fftw_complex *input = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * FFT_SIZE);
     fftw_complex *output = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * FFT_SIZE);
-   // fftw_plan plan = fftw_plan_dft_1d(FFT_SIZE, input, output, FFTW_FORWARD, FFTW_ESTIMATE);
-
-    fftw_plan plan = fftw_plan_dft_r2c_1d(FFT_SIZE, audioData, output, FFTW_ESTIMATE);
-
-    LOGI("fftwplan working");
-
-
+    fftw_complex *conjugatedData = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * FFT_SIZE);
+    fftw_plan plan, plan_inverse;
+    plan = fftw_plan_dft_r2c_1d(FFT_SIZE, audioData, output, FFTW_MEASURE);
     fftw_execute(plan);
-
-    LOGI("fftw execute working");
-
-
-    // Get the frequency data from the FFTW output array
-    jdoubleArray frequencyData = env->NewDoubleArray(FFT_SIZE / 2);
+    jdoubleArray frequencyData = env->NewDoubleArray(FFT_SIZE);
     jdouble *magnitude = env->GetDoubleArrayElements(frequencyData, NULL);
 
-    double maxMagnitude = -INFINITY;
-    int magnitudeIndex = -1;
+    for (int j = 0; j<FFT_SIZE;j++)
+    {
+        conjugatedData[j][0] = output[j][0] * output[j][0] + output[j][1] * output[j][1];
+        conjugatedData[j][1] = 0.0;
+    }
+    jdoubleArray peakArray = env->NewDoubleArray(FFT_SIZE);
+    jdoubleArray autoCorrelationArray = env->NewDoubleArray(FFT_SIZE);
+    jdouble *autoCorrelationFunction = env->GetDoubleArrayElements(autoCorrelationArray, NULL);
+    jdouble *peakValues = env->GetDoubleArrayElements(peakArray, NULL);
 
-    for (int i = 0; i < FFT_SIZE / 2 - 1; i++) {
-        magnitude[i] = sqrt(output[i][0] * output[i][0] + output[i][1] * output[i][1]);
-        if (magnitude[i] > maxMagnitude)
-        {
-            maxMagnitude = magnitude[i];
-            magnitudeIndex = i;
+    plan_inverse = fftw_plan_dft_c2r_1d(FFT_SIZE, conjugatedData, autoCorrelationFunction, FFTW_MEASURE);
+    fftw_execute(plan_inverse);
+    double maxACF = -INFINITY;
+    for (int m=0;m < FFT_SIZE / 2 + 1;m++) {
+        autoCorrelationFunction[m] = autoCorrelationFunction[m]/FFT_SIZE;
+        if (autoCorrelationFunction[m] > maxACF) {
+            maxACF = autoCorrelationFunction[m];
         }
     }
 
-    double freq = magnitudeIndex * 44100 / FFT_SIZE;
+    for (int v=0;v < FFT_SIZE / 2 + 1;v++) {
+        autoCorrelationFunction[v] = autoCorrelationFunction[v] / maxACF;
+       // LOGI("AutoCorrelation values: %f\n", autoCorrelationFunction[v]);
+    }
+
+    double maxValueF = -INFINITY;
+    int positionMax = -1;
+    for (int s=1; s< FFT_SIZE / 2 + 1; s++) {
+
+        if (autoCorrelationFunction[s] > maxValueF && autoCorrelationFunction[s] > 0) {
+            maxValueF = autoCorrelationFunction[s];
+            //LOGI("NEW MAX VALUE: %f\n", maxValueF);
+            positionMax = s;
+            //LOGI("NEW POSITION MAX: %d\n", positionMax);
+        }
+
+        if (autoCorrelationFunction[s] < 0) {
+            peakValues[positionMax] = maxValueF;
+            maxValueF = -INFINITY;
+            positionMax = -1;
+        }
+    }
+
+// calcul mai rapid la perioada asemanator ca valoare
+//    double valueOfRelevantPeak = 0.5;
+//    int ok = 1;
+//    double actual = 1;
+//    int period;
+//
+//    for (int s=1;s < FFT_SIZE / 2 + 1;s++)
+//    {
+//        double pred = actual;
+//        actual = autoCorrelationFunction[s];
+//
+//        if (ok == 2 && actual - pred <= 0) {
+//            period = s;
+//            ok = 3;
+//        }
+//        if (ok == 1 && actual > valueOfRelevantPeak && actual - pred > 0) {
+//            ok = 2;
+//        }
+//    }
+//
+//    LOGI("PERIOD IS: %d", period);
+
+
+    double periodOfTheSound = 0;
+    double peakMaxValue = -INFINITY;
+
+    for (int t = 2; t < FFT_SIZE / 2 + 1; t++) {
+        if (peakValues[t] != 0) {
+            if (peakValues[t] > peakMaxValue) {
+                peakMaxValue = peakValues[t];
+            }
+        }
+    }
+
+    LOGI("MAX VALUE FROM ALL PEAKS: %f", peakMaxValue);
+
+    double threshhold = peakMaxValue * 0.9;
+
+    for (int test = 2; test < FFT_SIZE / 2 + 1; test++) {
+        if (peakValues[test] != 0 && peakValues[test] > threshhold) {
+            LOGI("THE PEAK VALUE:  %f  AND THE POSITION  %d", peakValues[test], test);
+            periodOfTheSound = test;
+            break;
+        }
+    }
+
+
+// calcul media perioadelor si afisare frecventa in functie de medie => acuratete slaba rezultate eronate
+//    double meanOfPeriods;
+//    double maxPeriodT = 0;
+//    double sumOfPeriods = 0;
+//    int pred = 0;
+//    double k = 0;
+//    for (int val = 1; val < FFT_SIZE / 2 + 1; val++)
+//    {
+//        if (peakValues[val] != 0)
+//        {
+//            //LOGI("Peak value at position  %d  with value  %f\n", val, peakValues[val]);
+//
+//            if (pred != 0 && val - pred > 0 && maxPeriodT < (val - pred))
+//            {
+//                maxPeriodT = val - pred;
+//               // LOGI("THE MAX PERIOD RIGHT NOW %f\n", maxPeriodT);
+//            }
+//
+//            pred = val;
+//           // LOGI("THE PREDECESOR RIGHT NOW %d\n", pred);
+//            sumOfPeriods = sumOfPeriods + maxPeriodT;
+//           // LOGI("THE SUM OF PERIODS %f\n", sumOfPeriods);
+//            k++;
+//        }
+//    }
+//
+//    LOGI("TOTAL SUM OF PERIODS: %f", sumOfPeriods);
+//    LOGI("MAX PERIOD   %f", maxPeriodT);
+//    LOGI("K value   %f", k);
+//    meanOfPeriods = sumOfPeriods / k;
+//    LOGI("THE MEAN OF PERIODS %.5f", meanOfPeriods);
+
+    //double freq = magnitudeIndex * 44100 / FFT_SIZE;
+
+    double sampleRate = 44100;
+    double freq = sampleRate / periodOfTheSound;
+
+    int har = 2;
+    while (freq > 350)
+    {
+        freq = freq / har;
+        har++;
+    }
+
+    if (freq < 65) {
+        freq = 0;
+    }
+
 
 
     // Release the FFTW resources
     //fftw_free(input);
     fftw_free(output);
-   // fftw_destroy_plan(plan);
+    fftw_destroy_plan(plan);
+    fftw_destroy_plan(plan_inverse);
 
     // Release the JNI array
     env->ReleaseDoubleArrayElements(audioSamples, audioData, 0);
     env->ReleaseDoubleArrayElements(frequencyData, magnitude, 0);
+    env->ReleaseDoubleArrayElements(autoCorrelationArray,autoCorrelationFunction,0);
+    env->ReleaseDoubleArrayElements(peakArray,peakValues,0);
+
+    LOGI("FREQ VALUE %.4f", freq);
 
     return freq;
 

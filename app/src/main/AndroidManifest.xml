@@ -4,6 +4,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <application
         android:allowBackup="true"
@@ -13,8 +15,17 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.LicentaChitara"
+        android:theme="@style/AppFont"
         tools:targetApi="31">
+        <activity
+            android:name=".ChordsSettingActivity"
+            android:exported="false" />
+        <activity
+            android:name=".CreateMusicSheetActivity"
+            android:exported="false" />
+        <activity
+            android:name=".MusicSheetsForum"
+            android:exported="false" />
         <activity
             android:name=".PermissionActivity"
             android:exported="true">
@@ -29,11 +40,14 @@
             android:exported="false" />
         <activity
             android:name=".LogInActivity"
-            android:exported="false">
-        </activity>
+            android:exported="false" />
         <activity
             android:name=".MainActivity"
-            android:exported="false"></activity>
+            android:exported="false" />
+
+        <meta-data
+            android:name="preloaded_fonts"
+            android:resource="@array/preloaded_fonts" />
     </application>
 
 </manifest>

@@ -1,16 +1,7 @@
 package com.example.licentachitara;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-
-import android.Manifest;
-import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.util.Log;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.Button;
@@ -18,12 +9,14 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.licentachitara.MainActivity;
-import com.example.licentachitara.SignUpActivity;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 public class LogInActivity extends AppCompatActivity {
 
@@ -55,9 +48,12 @@ public class LogInActivity extends AppCompatActivity {
                                 .addOnSuccessListener(new OnSuccessListener<AuthResult>() {
                                     @Override
                                     public void onSuccess(AuthResult authResult) {
-                                        Toast.makeText(LogInActivity.this, "Login Successful", Toast.LENGTH_SHORT).show();
-                                        startActivity(new Intent(LogInActivity.this, MainActivity.class ));
-                                        finish();
+                                        FirebaseUser user = auth.getCurrentUser();
+                                        if (user != null) {
+                                            Toast.makeText(LogInActivity.this, "Login Successful", Toast.LENGTH_SHORT).show();
+                                            startActivity(new Intent(LogInActivity.this, MainActivity.class));
+                                            finish();
+                                        }
 
                                     }
                                 }).addOnFailureListener(new OnFailureListener() {
@@ -77,10 +73,13 @@ public class LogInActivity extends AppCompatActivity {
                 }
             }
         });
+
+
         signupRedirectText.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 startActivity(new Intent(LogInActivity.this, SignUpActivity.class));
+                finish();
             }
         });
 

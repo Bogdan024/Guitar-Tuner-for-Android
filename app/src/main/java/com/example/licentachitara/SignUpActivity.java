@@ -1,20 +1,22 @@
 package com.example.licentachitara;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 public class SignUpActivity extends AppCompatActivity {
 
@@ -53,8 +55,10 @@ public class SignUpActivity extends AppCompatActivity {
                         @Override
                         public void onComplete(@NonNull Task<AuthResult> task) {
                             if(task.isSuccessful()){
-                                Toast.makeText(SignUpActivity.this, "Signup Successful", Toast.LENGTH_SHORT).show();
+                                FirebaseUser currentUser = auth.getCurrentUser();
+                                sendEmailVerification(currentUser);
                                 startActivity(new Intent(SignUpActivity.this, LogInActivity.class));
+                                finish();
                             } else{
                                 Toast.makeText(SignUpActivity.this, "Signup Failed " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                             }
@@ -68,8 +72,21 @@ public class SignUpActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 startActivity(new Intent(SignUpActivity.this, LogInActivity.class));
+                finish();
             }
         });
 
+    }
+
+    private void sendEmailVerification(FirebaseUser user) {
+        user.sendEmailVerification()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        Toast.makeText(SignUpActivity.this, "Verification email sent to " + user.getEmail(), Toast.LENGTH_SHORT).show();
+                    } else {
+                        Log.e("EMAIL", "sendEmailVerification", task.getException());
+                        Toast.makeText(SignUpActivity.this, "Failed to send verification email.", Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 }

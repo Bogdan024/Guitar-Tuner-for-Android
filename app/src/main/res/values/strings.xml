@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">LicentaChitara</string>
+    <string-array name="tuning_options">
+        <item>Standard Tuning</item>
+        <item>Drop D</item>
+        <item>Custom Tuning</item>
+    </string-array>
+    <string name="tuning_prompt">Select Tuning</string>
 </resources>

@@ -48,7 +48,8 @@
                 android:hint="Email"
                 android:drawableLeft="@drawable/baseline_person_24"
                 android:drawablePadding="8dp"
-                android:textColor="@color/black" />
+                android:textColor="@color/black"
+                android:inputType="textEmailAddress"/>
 
             <EditText
                 android:layout_width="match_parent"
@@ -62,6 +63,7 @@
                 android:drawableLeft="@drawable/baseline_lock_24"
                 android:drawablePadding="8dp"
                 android:textColor="@color/black"
+                android:inputType="textPassword"
                 />
 
 
