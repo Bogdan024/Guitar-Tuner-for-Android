@@ -17,7 +17,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.google.android.gms.tasks.OnFailureListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -34,14 +33,17 @@ public class CreateMusicSheetActivity extends AppCompatActivity {
     private static final int PICK_IMAGE_REQUEST = 1;
     private static final int STORAGE_PERMISSION_CODE = 1025;
 
-    private EditText titleEt, descriptionEt;
-    private ImageView sheetMusicIv;
-    private Button chooseImageBtn, submitBtn;
+    private EditText titleEt, authorEt, descriptionEt;
+    private ImageView sheetMusicIv, songPictureIv;
+    private Button chooseImageBtn, submitBtn, chooseSongPictureBtn;
     private Uri imageUri;
+    private Uri songPictureUri;
+    private int songPictureOk = 0;
 
     private FirebaseFirestore database;
     private FirebaseAuth auth;
     private StorageReference storageReference;
+    private String username;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,14 +51,20 @@ public class CreateMusicSheetActivity extends AppCompatActivity {
         setContentView(R.layout.activity_create_music_sheet);
 
         titleEt = findViewById(R.id.titleEt);
+        authorEt = findViewById(R.id.authorEt);
         descriptionEt = findViewById(R.id.descriptionEt);
         sheetMusicIv = findViewById(R.id.sheetMusicIv);
         chooseImageBtn = findViewById(R.id.chooseImageBtn);
         submitBtn = findViewById(R.id.submitBtn);
+        songPictureIv = findViewById(R.id.songPictureIv);
+        chooseSongPictureBtn = findViewById(R.id.chooseSongPictureBtn);
 
         database = FirebaseFirestore.getInstance();
         auth = FirebaseAuth.getInstance();
         storageReference = FirebaseStorage.getInstance().getReference();
+
+        Intent intent = getIntent();
+        username = intent.getStringExtra("username_key");
 
         chooseImageBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -64,6 +72,18 @@ public class CreateMusicSheetActivity extends AppCompatActivity {
                 if (ContextCompat.checkSelfPermission(CreateMusicSheetActivity.this, Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
                     ActivityCompat.requestPermissions(CreateMusicSheetActivity.this, new String[]{Manifest.permission.READ_MEDIA_IMAGES}, STORAGE_PERMISSION_CODE);
                 } else {
+                    openFileChooser();
+                }
+            }
+        });
+
+        chooseSongPictureBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (ContextCompat.checkSelfPermission(CreateMusicSheetActivity.this, Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(CreateMusicSheetActivity.this, new String[]{Manifest.permission.READ_MEDIA_IMAGES}, STORAGE_PERMISSION_CODE);
+                } else {
+                    songPictureOk = 1;
                     openFileChooser();
                 }
             }
@@ -107,17 +127,24 @@ public class CreateMusicSheetActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == PICK_IMAGE_REQUEST && resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
-            imageUri = data.getData();
-            sheetMusicIv.setImageURI(imageUri);
+            if (songPictureOk == 0) {
+                imageUri = data.getData();
+                sheetMusicIv.setImageURI(imageUri);
+            } else if (songPictureOk == 1) {
+                songPictureUri = data.getData();
+                songPictureIv.setImageURI(songPictureUri);
+                songPictureOk = 0;
+            }
         }
     }
 
     private void submitMusicSheet() {
         final String title = titleEt.getText().toString().trim();
+        final String author = authorEt.getText().toString().trim();
         final String sheetDescription = descriptionEt.getText().toString().trim();
         final FirebaseUser user = auth.getCurrentUser();
 
-        if (title.isEmpty() || sheetDescription.isEmpty() || imageUri == null) {
+        if (title.isEmpty() || author.isEmpty() || sheetDescription.isEmpty() || imageUri == null || songPictureUri == null) {
             Toast.makeText(this, "All fields are required", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -126,43 +153,51 @@ public class CreateMusicSheetActivity extends AppCompatActivity {
         final StorageReference fileReference = storageReference.child("sheetImages/" + imageName);
 
         fileReference.putFile(imageUri)
-                .addOnSuccessListener(taskSnapshot -> fileReference.getDownloadUrl().
-                        addOnSuccessListener(uri -> {
-                    String sheetMusicUrl = uri.toString();
-                    String userId = user.getUid();
-                    String username = user.getDisplayName();
-                    Date currentTime = Calendar.getInstance().getTime(); // Current date and time
+                .addOnSuccessListener(taskSnapshot -> fileReference.getDownloadUrl()
+                        .addOnSuccessListener(uri -> {
+                            final String songPictureImageName = UUID.randomUUID().toString();
+                            final StorageReference songPictureReference = storageReference.child("sheetImages/" + songPictureImageName);
 
-                    MusicSheet musicSheet = new MusicSheet(title, sheetDescription, sheetMusicUrl, currentTime, username, userId);
-                    database.collection("postsCollection").add(musicSheet)
-                            .addOnSuccessListener(documentReference -> {
-                                Toast.makeText(CreateMusicSheetActivity.this,
-                                        "Music sheet created", Toast.LENGTH_SHORT).show();
-                                finish();
-                            })
-                            .addOnFailureListener(new OnFailureListener() {
-                                @Override
-                                public void onFailure(@NonNull Exception e) {
-                                    Toast.makeText(CreateMusicSheetActivity.this, "Error creating post", Toast.LENGTH_SHORT).show();
-                                }
-                            });
-                }).addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        Toast.makeText(CreateMusicSheetActivity.this, "Error getting download URL", Toast.LENGTH_SHORT).show();
-                    }
-                })).addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        Toast.makeText(CreateMusicSheetActivity.this, "Error uploading image", Toast.LENGTH_SHORT).show();
-                        if (e instanceof StorageException) {
-                            StorageException se = (StorageException) e;
-                            if (se.getHttpResultCode() == 404) {
-                                // Handle the case where the object does not exist
-                                Toast.makeText(CreateMusicSheetActivity.this, "The specified file path does not exist", Toast.LENGTH_SHORT).show();
-                            }
+                            songPictureReference.putFile(songPictureUri)
+                                    .addOnSuccessListener(taskSnapshot1 -> songPictureReference.getDownloadUrl()
+                                            .addOnSuccessListener(uri1 -> {
+                                                String sheetMusicUrl = uri.toString();
+                                                String songPictureUrl = uri1.toString();
+                                                String userId = user.getUid();
+                                                Date currentTime = Calendar.getInstance().getTime(); // Current date and time
+
+                                                MusicSheet musicSheet = new MusicSheet(title, author, sheetDescription, sheetMusicUrl, songPictureUrl, currentTime, username, userId);
+                                                database.collection("postsCollection").add(musicSheet)
+                                                        .addOnSuccessListener(documentReference -> {
+                                                            Toast.makeText(CreateMusicSheetActivity.this,
+                                                                    "Music sheet created", Toast.LENGTH_SHORT).show();
+                                                            finish();
+                                                        })
+                                                        .addOnFailureListener(e -> Toast.makeText(CreateMusicSheetActivity.this, "Error creating post", Toast.LENGTH_SHORT).show());
+                                            })
+                                            .addOnFailureListener(e -> Toast.makeText(CreateMusicSheetActivity.this, "Error getting second image download URL", Toast.LENGTH_SHORT).show()))
+                                    .addOnFailureListener(e -> {
+                                        Toast.makeText(CreateMusicSheetActivity.this, "Error uploading second image", Toast.LENGTH_SHORT).show();
+                                        if (e instanceof StorageException) {
+                                            StorageException se = (StorageException) e;
+                                            if (se.getHttpResultCode() == 404) {
+                                                // Handle the case where the object does not exist
+                                                Toast.makeText(CreateMusicSheetActivity.this, "The specified file path for the second image does not exist", Toast.LENGTH_SHORT).show();
+                                            }
+                                        }
+                                    });
+                        })
+                        .addOnFailureListener(e -> Toast.makeText(CreateMusicSheetActivity.this, "Error getting first image download URL", Toast.LENGTH_SHORT).show()))
+                .addOnFailureListener(e -> {
+                    Toast.makeText(CreateMusicSheetActivity.this, "Error uploading first image", Toast.LENGTH_SHORT).show();
+                    if (e instanceof StorageException) {
+                        StorageException se = (StorageException) e;
+                        if (se.getHttpResultCode() == 404) {
+                            // Handle the case where the object does not exist
+                            Toast.makeText(CreateMusicSheetActivity.this, "The specified file path for the first image does not exist", Toast.LENGTH_SHORT).show();
                         }
                     }
                 });
     }
+
 }

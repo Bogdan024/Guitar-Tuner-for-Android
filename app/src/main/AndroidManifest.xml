@@ -18,17 +18,26 @@
         android:theme="@style/AppFont"
         tools:targetApi="31">
         <activity
-            android:name=".ChordsSettingActivity"
+            android:name=".DetailedMusicSheet"
             android:exported="false" />
+        <activity
+            android:name=".ChordsSettingActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
         <activity
             android:name=".CreateMusicSheetActivity"
-            android:exported="false" />
+            android:windowSoftInputMode="adjustPan"
+            android:exported="false"
+            android:screenOrientation="portrait" />
         <activity
             android:name=".MusicSheetsForum"
-            android:exported="false" />
+            android:windowSoftInputMode="adjustPan"
+            android:exported="false"
+            android:screenOrientation="portrait" />
         <activity
             android:name=".PermissionActivity"
-            android:exported="true">
+            android:exported="true"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -37,13 +46,16 @@
         </activity>
         <activity
             android:name=".SignUpActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
         <activity
             android:name=".LogInActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
         <activity
             android:name=".MainActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
         <meta-data
             android:name="preloaded_fonts"

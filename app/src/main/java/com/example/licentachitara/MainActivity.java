@@ -20,6 +20,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -41,20 +42,20 @@ public class MainActivity extends AppCompatActivity {
     int samplesize = 44100;
     private int buffersize = AudioRecord.getMinBufferSize(samplesize, channel_config, format);
     private short[] audioBuffer = new short[buffersize];
-
     private double[] dataFromNative;
     private double freqOutput;
+    private int negative = 0;
     private boolean stopListen;
-    private AudioRecord audioRecord;
-    private NoiseSuppressor noiseSuppressor;
+    private AudioRecord audioRecord = null;
+    private NoiseSuppressor noiseSuppressor = null;
     private Thread listener;
     private Button startRecording;
     private Button stopRecording;
     private TextView samplesTw;
     private TextView outputFrequencyTw;
     private TextView noteTw;
+    private TextView inTuneTw;
 
-    private double maxFrequency = 0;
     private static final HashMap<String, Double> notesAllFreqMap= new HashMap<>();
     static {
         notesAllFreqMap.put("C", 32.70);
@@ -89,6 +90,8 @@ public class MainActivity extends AppCompatActivity {
     private int differenceInCents = 0;
     private String noteToOutput;
     private Handler mHandler = new Handler(Looper.getMainLooper());
+    private Handler checkForTuneHandler = new Handler(Looper.getMainLooper());
+    private boolean stringInTune = false;
     private TextView firstStringTv, secondStringTv, thirdStringTv, fourthStringTv, fifthStringTv, sixthStringTv;
     private List<TextView> notesTvList;
     private static final double noteA4 = 440.0;
@@ -98,7 +101,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    public native double FFTAnalyze(double[] audioSamples, int buffersize);
+    private native double FFTAnalyze(double[] audioSamples, int buffersize);
+    private native void destroyPlanFFT();
+
 
 
     @Override
@@ -114,6 +119,7 @@ public class MainActivity extends AppCompatActivity {
         stopRecording = findViewById(R.id.stop_recording);
 
         samplesTw = findViewById(R.id.samplesTw);
+        inTuneTw = findViewById(R.id.inTuneTv);
 
         outputFrequencyTw = findViewById(R.id.outputFrequencyTw);
         noteTw = findViewById(R.id.noteTw);
@@ -194,20 +200,26 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 try {
-                    stopListen = true;
-                    audioRecord.stop();
-                    audioRecord.release();
-                    audioBuffer = null;
-                    dataFromNative = null;
-                    outputFrequencyTw.setText("");
-                    maxFrequency = 0;
+                    if (audioRecord != null) {
+                        stopListen = true;
+                        audioRecord.stop();
+                        audioRecord.release();
+                        audioBuffer = null;
+                        dataFromNative = null;
+                        audioRecord = null;
+                    }
+                    outputFrequencyTw.setText("Play a string on your guitar");
 
                     if (noiseSuppressor != null) {
                         noiseSuppressor.release();
+                        noiseSuppressor = null;
                     }
+                    destroyPlanFFT();
                 } catch (IllegalStateException e) {
                     e.printStackTrace();
                     Toast.makeText(getApplicationContext(),"Recording already stopped",Toast.LENGTH_SHORT).show();
+                } catch (NullPointerException e) {
+                    Toast.makeText(getApplicationContext(), "Recording already stopped",Toast.LENGTH_SHORT).show();
                 }
                 startRecording.setEnabled(true);
             }
@@ -273,15 +285,12 @@ public class MainActivity extends AppCompatActivity {
                         dataFromNative[i] = (double) (audioBuffer[i] / 32768.0f);
                     }
 
-//                    for (int i=0; i< dataFromNative.length; i++)
-//                    {
-//                        dataFromNative[i] *= 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (dataFromNative.length - 1));
-//                    }
 
-//                for (int j=0;j<dataFromNative.length;j++)
-//                {
-//                    dataFromNative[j] = (double) (0.54 - 0.46 * Math.cos(2 * Math.PI * j / (dataFromNative.length - 1)));
-//                }
+                    for (int j=0;j<dataFromNative.length;j++)
+                    {
+                        dataFromNative[j] *= (0.54 - 0.46 * Math.cos(2 * Math.PI * j / (dataFromNative.length - 1)));
+                    }
+
 
 
                     if (audioRead >= 16384) {
@@ -289,138 +298,100 @@ public class MainActivity extends AppCompatActivity {
                         freqOutput = FFTAnalyze(dataFromNative, 16384);
                     }
 
+
                     Log.d(RECORD_TAG, freqOutput + " FFT OUTPUT");
 
                     noteToOutput = "";
+                    differenceInCents = 0;
 
                     if (freqOutput > 0) {
+                        negative = 0;
+                        double referenceFrequency;
                         double noteMIDInumber = 69 + 12 * Math.log(freqOutput / noteA4) / Math.log(2);
                         int roundedMIDInr = (int) Math.round(noteMIDInumber);
                         int octave = (roundedMIDInr / 12) - 1;
                         int noteIndex = roundedMIDInr % 12;
                         String forOutput = indexAllNotesMap.get(noteIndex);
-                        double referenceFrequency;
-                        referenceFrequency = notesAllFreqMap.get(forOutput) * Math.pow(2, octave - 1);
-                        Log.d("REFERENCE FREQUENCY", "REF FREQ " + referenceFrequency);
-                        forOutput = forOutput + octave;
-                        noteToOutput = forOutput;
+                        String noteAndOctave = forOutput + octave;
+                        Log.d("NOTE AND OCTAVE", "NOTE AND OCTAVE " + noteAndOctave);
+                        if (stringsToTuneMap.containsKey(noteAndOctave)) {
+                            referenceFrequency = notesAllFreqMap.get(forOutput) * Math.pow(2, octave - 1);
+                            Log.d("REFERENCE FREQUENCY", "REF FREQ " + referenceFrequency);
+                            noteToOutput = noteAndOctave;
+                            differenceInCents = Math.abs((int) Math.round(1200 * Math.log(freqOutput / referenceFrequency) / Math.log(2)));
+                        } else {
+                            double maxDifference = Double.MAX_VALUE;
+                            String closestString = "";
+                            negative = 0;
+                            for (Map.Entry<String,Double> entry : stringsToTuneMap.entrySet()) {
+                                double differenceFromEntry = Math.abs(1200 * Math.log(freqOutput / entry.getValue()) / Math.log(2));
+                                Log.d("diference from entry", "DIFF from entry " + differenceFromEntry+ " " + "ENTRY VALUE " + entry.getValue());
+                                if (maxDifference > differenceFromEntry && differenceFromEntry < 210) {
+                                    if (entry.getValue() > freqOutput) {
+                                        negative = 1;
+                                        maxDifference = differenceFromEntry;
+                                    } else {
+                                        negative = 0;
+                                        maxDifference = differenceFromEntry;
+                                    }
+                                    Log.d("MAX DFF", "DIFF IN CENTS " + maxDifference);
+                                    closestString = entry.getKey();
+                                }
+                            }
+                            if (maxDifference != Double.MAX_VALUE) {
+                                differenceInCents = Math.abs((int) maxDifference);
+                                Log.d("MAX DFF", "DIFF IN CENTS " + differenceInCents);
+                            }
+                            Log.d("DIFERENCE IN CENTS", "DIFF IN CENTS " + differenceInCents);
+                            noteToOutput = closestString;
+                            Log.d("NOTE TO OUTPUT", "NOTE TO OUTPUT " + noteToOutput);
+                        }
 
-
-                        differenceInCents = (int) Math.round(1200 * Math.log(freqOutput / referenceFrequency) / Math.log(2));
+                        Log.d("DIFERENCE IN CENTS AFTER IF/ELSE", "DIFF IN CENTS AFTE IF/ELSE " + differenceInCents);
                     }
 
-//                double output[] = new double[dataFromNative.length];
-//
-//                for (int lag = 0; lag < dataFromNative.length; lag++)
-//                {
-//                    for (int b = 0; b + lag < dataFromNative.length; b++)
-//                    {
-//                        output[lag] +=dataFromNative[b] * dataFromNative[b + lag];
-//                    }
-//                }
-//
-//                double maxValue = -1;
-//                int pos = -1;
-//                HashMap<Integer,Double> valuesFound = new HashMap<>();
-//                for (int v = 0; v < output.length; v++)
-//                {
-//                    if (output[v] > 0 && v > 0 && output[v-1] <= 0)
-//                        if (output[v] > maxValue)
-//                        {
-//                            maxValue = output[v];
-//                            pos = v;
-//                        }
-//                    valuesFound.put(v,maxValue);
-//                }
-//
-//                maxValue=0;
-//                pos = -1;
-//                for (Map.Entry<Integer,Double> entry : valuesFound.entrySet())
-//                {
-//                    if (maxValue > entry.getValue())
-//                    {
-//                        maxValue = entry.getValue();
-//                        pos = entry.getKey();
-//                    }
-//                }
-//
-//                double tolerance = 0.9;
-//                double autoCorFreq;
-//                for (Map.Entry<Integer,Double> entry2 : valuesFound.entrySet())
-//                {
-//                    if (entry2.getValue() > maxValue * tolerance && entry2.getKey() < pos)
-//                    {
-//                        autoCorFreq = pos;
-//                    }
-//                }
-//
-//                if (pos != 0) {
-//                    autoCorFreq = samplesize / pos;
-//                }
-//                else {
-//                    autoCorFreq = samplesize;
-//                }
-//
-//                double harmonicData;
-//                for (int s = 1; s <= 5 ; s++)
-//                {
-//                    harmonicData = autoCorFreq / s;
-//                    if (harmonicData < 350)
-//                    {
-//                        finalFreqAutoCorr = harmonicData;
-//                    }
-//                }
-
-
-//                for (int j=0;j<freqOutput.length;j++)
-//                {
-//                    if (freqOutput[j] > maxFrequency)
-//                    {
-//                        maxFrequency = freqOutput[j];
-//                    }
-//                }
-                    mHandler.post(new Runnable() {
+                    mHandler.postDelayed(new Runnable() {
                         @Override
                         public void run() {
                             if (freqOutput > 0) {
                                 outputFrequencyTw.setText("Frequency of the sound " + NUMBER_WITH_DECIMALS.format(freqOutput) + " Hz");
+                                noteTw.setText("The note you played: " + noteToOutput);
+                                if (differenceInCents == 0) {
+                                    samplesTw.setText(String.valueOf(differenceInCents));
+                                } else if (negative == 1){
+                                    samplesTw.setText("-" + differenceInCents);
+                                } else if (negative == 0) {
+                                    samplesTw.setText("+" + differenceInCents);
+                                }
+
+                                updateTuningState(-differenceInCents);
                             } else {
                                 outputFrequencyTw.setText("Play a string on your guitar");
-                            }
-                            noteTw.setText("The note you played: " + noteToOutput);
-                            samplesTw.setText("Difference in cents: " + differenceInCents);
+                                samplesTw.setText("");
 
+                            }
+//                            noteTw.setText("The note you played: " + noteToOutput);
+//                            if (differenceInCents == 0) {
+//                                samplesTw.setText(String.valueOf(differenceInCents));
+//                            } else if (negative == 1){
+//                                samplesTw.setText("-" + differenceInCents);
+//                            } else if (negative == 0) {
+//                                samplesTw.setText("+" + differenceInCents);
+//                            }
+//
+//                            updateTextView(-differenceInCents);
                             updateTextViewState();
 
                         }
-                    });
+                    },250);
                 }
 
 
             }
 
-            samplesTw.setText(audioRead + " samples");
-
-
             Log.d(RECORD_TAG, String.format("Samples read: %d", audioRead));
 
             audioRead = 0;
-
-
-//        double[] fftOutput = new double[(int) audioRead * 2];
-//
-//        calculateFrequency(audioBuffer,buffersize,fftOutput);
-//
-//        double maxValue = -1;
-//        int maxIndex = -1;
-//        for (int i = 0; i < fftOutput.length; i++) {
-//            if (fftOutput[i] > maxValue) {
-//                maxValue = fftOutput[i];
-//                maxIndex = i;
-//            }
-//        }
-//        double maxFrequency = maxIndex * samplesize / audioBuffer.length;
-
         }
     }
 
@@ -432,17 +403,49 @@ public class MainActivity extends AppCompatActivity {
                 textView.setActivated(false);
             }
         }
-
     }
+
+    private void updateTuningState(int value) {
+
+        if (value < -10) {
+            inTuneTw.setText("Too Low");
+        } else if (value > 10) {
+            inTuneTw.setText("Too High");
+        }
+
+        // Update background color and position based on value
+        if (value >= -10 && value <= 10) {
+            samplesTw.setText("");
+            samplesTw.setBackground(ContextCompat.getDrawable(this, R.drawable.ic_check_mark));
+
+            if (!stringInTune) {
+                stringInTune = true;
+                checkForTuneHandler.postDelayed(checkRunnable, 2000);
+            }
+
+        } else {
+            samplesTw.setBackground(ContextCompat.getDrawable(this, R.drawable.cents_indicator));
+            stringInTune = false;
+        }
+    }
+
+    private Runnable checkRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (stringInTune) {
+                inTuneTw.setText("In Tune");
+            }
+        }
+    };
 
     private void loadTuningFromPreferences() {
         SharedPreferences sharedPreferences = getSharedPreferences("TuningPreferences", Context.MODE_PRIVATE);
-        String first = sharedPreferences.getString("1st_STRING", "N/A");
-        String second = sharedPreferences.getString("2nd_STRING", "N/A");
-        String third = sharedPreferences.getString("3rd_STRING", "N/A");
-        String fourth = sharedPreferences.getString("4th_STRING", "N/A");
-        String fifth = sharedPreferences.getString("5th_STRING", "N/A");
-        String sixth = sharedPreferences.getString("6th_STRING", "N/A");
+        String first = sharedPreferences.getString("1st_STRING", "E4");
+        String second = sharedPreferences.getString("2nd_STRING", "B3");
+        String third = sharedPreferences.getString("3rd_STRING", "G3");
+        String fourth = sharedPreferences.getString("4th_STRING", "D3");
+        String fifth = sharedPreferences.getString("5th_STRING", "A2");
+        String sixth = sharedPreferences.getString("6th_STRING", "E2");
 
         firstStringTv.setText(first);
         secondStringTv.setText(second);
@@ -458,6 +461,8 @@ public class MainActivity extends AppCompatActivity {
         if (audioRecord != null) {
             audioRecord.release();
             audioRecord = null;
+            stopListen = true;
+            destroyPlanFFT();
         }
     }
 }

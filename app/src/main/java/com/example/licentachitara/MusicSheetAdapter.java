@@ -1,6 +1,7 @@
 package com.example.licentachitara;
 
 import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,7 +21,6 @@ import java.util.Locale;
 public class MusicSheetAdapter extends RecyclerView.Adapter<MusicSheetAdapter.MusicSheetViewHolder> {
     private List<MusicSheet> musicSheetsList;
     private Context forumContext;
-
     private SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault());
 
     public MusicSheetAdapter(Context context, List<MusicSheet> musicSheetsList) {
@@ -39,6 +39,7 @@ public class MusicSheetAdapter extends RecyclerView.Adapter<MusicSheetAdapter.Mu
     public void onBindViewHolder(@NonNull MusicSheetViewHolder holder, int position) {
         MusicSheet musicSheet = musicSheetsList.get(position);
         holder.titleTv.setText(musicSheet.getTitle());
+        holder.authorTv.setText(musicSheet.getAuthor());
         holder.sheetDescriptionTv.setText(musicSheet.getSheetDescription());
         Date postDate = musicSheet.getTimestamp();
         if (postDate != null)
@@ -50,19 +51,24 @@ public class MusicSheetAdapter extends RecyclerView.Adapter<MusicSheetAdapter.Mu
         }
         holder.usernameTv.setText(musicSheet.getUsername());
 
-        // Load the image using Glided
-        //fsafsa //
-        ///fasfsafsaf//
-        //fsafsagasf
 
-        if (musicSheet.getSheetMusicUrl() != null && !musicSheet.getSheetMusicUrl().isEmpty()) {
+        if (musicSheet.getPictureUrl() != null && !musicSheet.getPictureUrl().isEmpty()) {
             Glide.with(forumContext)
-                    .load(musicSheet.getSheetMusicUrl())
+                    .load(musicSheet.getPictureUrl())
                     .placeholder(R.drawable.img_placeholder_svg) // Replace with a placeholder image resource
                     .into(holder.sheetMusicIv);
         } else {
-            holder.sheetMusicIv.setImageResource(R.drawable.feather_icon_2); // Replace with a placeholder image resource
+            holder.sheetMusicIv.setImageResource(R.drawable.img_placeholder_svg); // Replace with a placeholder image resource
         }
+
+        holder.itemView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(forumContext, DetailedMusicSheet.class);
+                intent.putExtra("musicSheetKey", musicSheet);
+                forumContext.startActivity(intent);
+            }
+        });
     }
 
     @Override
@@ -71,15 +77,17 @@ public class MusicSheetAdapter extends RecyclerView.Adapter<MusicSheetAdapter.Mu
     }
 
     public static class MusicSheetViewHolder extends RecyclerView.ViewHolder {
-        TextView titleTv;
-        TextView timeTv;
-        TextView usernameTv;
-        TextView sheetDescriptionTv;
-        ImageView sheetMusicIv;
+        protected TextView titleTv;
+        protected TextView authorTv;
+        protected TextView timeTv;
+        protected TextView usernameTv;
+        protected TextView sheetDescriptionTv;
+        protected ImageView sheetMusicIv;
 
         public MusicSheetViewHolder(@NonNull View itemView) {
             super(itemView);
             titleTv = itemView.findViewById(R.id.titleTv);
+            authorTv = itemView.findViewById(R.id.authorTv);
             sheetDescriptionTv = itemView.findViewById(R.id.sheetDescriptionTv);
             timeTv = itemView.findViewById(R.id.timeTv);
             usernameTv = itemView.findViewById(R.id.usernameTv);

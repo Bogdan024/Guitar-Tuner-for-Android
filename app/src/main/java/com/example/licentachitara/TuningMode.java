@@ -1,5 +1,7 @@
 package com.example.licentachitara;
 
+import androidx.annotation.NonNull;
+
 import java.io.Serializable;
 
 public class TuningMode implements Serializable {
@@ -48,4 +50,18 @@ public class TuningMode implements Serializable {
     public String getSixthString() {
         return sixthString;
     }
+
+
+    @NonNull
+    @Override
+    public String toString() {
+        return
+                name + ": " + firstString + " " +
+                        secondString + " " +
+                        thirdString + " " +
+                        fourthString + " " +
+                        fifthString + " " +
+                        sixthString;
+    }
 }
+

@@ -195,7 +195,7 @@ public class ChordsSettingActivity extends AppCompatActivity {
                 tuningIdsList.clear();
                 tuningContainer.removeAllViews();
                 addTuningToLayout(new TuningMode("Standard Tuning", "E4", "B3", "G3", "D3", "A2", "E2"));
-                addTuningToLayout(new TuningMode("Drop D Tuning", "D2", "A2", "D3", "G3", "B3", "E4"));
+                addTuningToLayout(new TuningMode("Drop D Tuning", "E4", "B3", "G3", "D3", "A2", "D2"));
 
 
 
@@ -248,9 +248,7 @@ public class ChordsSettingActivity extends AppCompatActivity {
         tuningTextView.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
-        tuningTextView.setText(tuningMode.getName() + ": " + tuningMode.getFirstString() + ", " + tuningMode.getSecondString() +
-                ", " + tuningMode.getThirdString() + ", " + tuningMode.getFourthString() + ", "
-                + tuningMode.getFifthString() + ", " + tuningMode.getSixthString());
+        tuningTextView.setText(tuningMode.toString());
         tuningTextView.setTextSize(18);
         tuningTextView.setPadding(8, 8, 8, 8);
 

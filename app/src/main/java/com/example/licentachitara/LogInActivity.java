@@ -1,6 +1,7 @@
 package com.example.licentachitara;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Patterns;
 import android.view.View;
@@ -36,6 +37,13 @@ public class LogInActivity extends AppCompatActivity {
         loginButton = findViewById(R.id.login_button);
         signupRedirectText = findViewById(R.id.signUpRedirectText);
 
+        if (isSessionValid()) {
+            FirebaseUser currentUser = auth.getCurrentUser();
+            if (currentUser != null) {
+                startActivity(new Intent(LogInActivity.this, MainActivity.class));
+                finish();
+            }
+        }
         loginButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -50,6 +58,7 @@ public class LogInActivity extends AppCompatActivity {
                                     public void onSuccess(AuthResult authResult) {
                                         FirebaseUser user = auth.getCurrentUser();
                                         if (user != null) {
+                                            saveLoginTimestamp();
                                             Toast.makeText(LogInActivity.this, "Login Successful", Toast.LENGTH_SHORT).show();
                                             startActivity(new Intent(LogInActivity.this, MainActivity.class));
                                             finish();
@@ -83,5 +92,20 @@ public class LogInActivity extends AppCompatActivity {
             }
         });
 
+    }
+
+    private void saveLoginTimestamp() {
+        SharedPreferences sharedPreferences = getSharedPreferences("LoginTime", MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putLong("login_time", System.currentTimeMillis());
+        editor.apply();
+    }
+
+    private boolean isSessionValid() {
+        SharedPreferences sharedPreferences = getSharedPreferences("LoginTime", MODE_PRIVATE);
+        long loginTimestamp = sharedPreferences.getLong("login_time", 0);
+        long currentTime = System.currentTimeMillis();
+        long elapsedTime = currentTime - loginTimestamp;
+        return elapsedTime < (10 * 60 * 1000); // 10 minutes in milliseconds
     }
 }

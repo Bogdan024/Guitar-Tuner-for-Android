@@ -23,8 +23,11 @@
             <com.google.android.material.textview.MaterialTextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Complete to add a new post"
-                android:textStyle="bold"
+                android:text="Add a new music sheet"
+                android:layout_marginBottom="20dp"
+                android:gravity="center"
+                android:textColor="@color/white"
+                android:textStyle="bold|italic"
                 android:textSize="25dp"
                 android:textAlignment="center"
                 />
@@ -33,6 +36,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
+                app:hintTextColor="@color/black"
+                app:boxStrokeWidth="2dp"
+                app:boxStrokeColor="@color/black"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -40,6 +46,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Title"
+                    android:textColor="@color/black"
+                    android:textColorHint="@color/black"
+                    android:textColorHighlight="@color/black"
                     android:inputType="text"
                     android:maxLines="1" />
             </com.google.android.material.textfield.TextInputLayout>
@@ -47,7 +56,73 @@
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
+                android:layout_marginBottom="16dp"
+                app:hintTextColor="@color/black"
+                app:boxStrokeWidth="2dp"
+                app:boxStrokeColor="@color/black"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/authorEt"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Author"
+                    android:textColor="@color/black"
+                    android:textColorHint="@color/black"
+                    android:textColorHighlight="@color/black"
+                    android:inputType="text"
+                    android:maxLines="1" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textview.MaterialTextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Song Picture"
+                android:layout_marginBottom="10dp"
+                android:textColor="@color/white"
+                android:textStyle="bold"
+                android:textSize="16dp"
+                android:textAlignment="textStart"
+                />
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="4dp"
+                android:layout_marginBottom="24dp">
+
+                <ImageView
+                    android:id="@+id/songPictureIv"
+                    android:layout_width="match_parent"
+                    android:layout_height="250dp"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/img_placeholder_svg"
+                    android:contentDescription="Song Picture" />
+            </androidx.cardview.widget.CardView>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/chooseSongPictureBtn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Choose Song Image"
+                android:layout_marginBottom="16dp"
+                android:textColor="@color/black"
+                android:padding="10dp"
+                app:icon="@drawable/baseline_collections_24"
+                app:iconGravity="textStart"
+                app:iconTint="@color/black"
+                app:strokeWidth="2dp"
+                app:strokeColor="@color/black"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
+                app:boxStrokeWidth="2dp"
+                app:hintTextColor="@color/black"
+                app:boxStrokeColor="@color/black"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -55,10 +130,23 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Sheet Description"
+                    android:textColor="@color/black"
+                    android:textColorHint="@color/black"
                     android:inputType="textMultiLine"
-                    android:minLines="3"
+                    android:minLines="5"
                     android:gravity="top|start" />
             </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textview.MaterialTextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Music sheet"
+                android:layout_marginBottom="10dp"
+                android:textColor="@color/white"
+                android:textStyle="bold"
+                android:textSize="16dp"
+                android:textAlignment="textStart"
+                />
 
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
@@ -76,13 +164,15 @@
                     android:contentDescription="Sheet Music Image" />
             </androidx.cardview.widget.CardView>
 
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/chooseImageBtn"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Choose Image"
+                android:text="Choose music sheet"
                 android:layout_marginBottom="16dp"
                 android:textColor="@color/black"
+                android:padding="10dp"
                 app:icon="@drawable/baseline_collections_24"
                 app:iconGravity="textStart"
                 app:iconTint="@color/black"
@@ -96,6 +186,7 @@
                 android:layout_height="wrap_content"
                 android:text="Submit"
                 android:textColor="@color/black"
+                android:padding="10dp"
                 app:icon="@drawable/submit_icon_svg"
                 app:iconTint="@color/black"
                 app:iconGravity="textStart"

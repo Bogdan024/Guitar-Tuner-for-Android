@@ -25,14 +25,14 @@
 #include <stdio.h>
 #include <complex.h>
 
-//#define FFT_SIZE 3584
 #define TAG "From Native"
 
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
-
+fftw_plan plan;
+fftw_plan plan_inverse;
 
 extern "C"
 JNIEXPORT double JNICALL
@@ -42,7 +42,6 @@ Java_com_example_licentachitara_MainActivity_FFTAnalyze(JNIEnv *env, jobject mai
     jdouble *audioData = env->GetDoubleArrayElements(audioSamples, NULL);
     fftw_complex *output = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * FFT_SIZE);
     fftw_complex *conjugatedData = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * FFT_SIZE);
-    fftw_plan plan, plan_inverse;
     plan = fftw_plan_dft_r2c_1d(FFT_SIZE, audioData, output, FFTW_MEASURE);
     fftw_execute(plan);
     jdoubleArray frequencyData = env->NewDoubleArray(FFT_SIZE);
@@ -182,17 +181,15 @@ Java_com_example_licentachitara_MainActivity_FFTAnalyze(JNIEnv *env, jobject mai
         har++;
     }
 
-    if (freq < 65) {
+    if (freq < 63) {
         freq = 0;
     }
 
 
 
-    // Release the FFTW resources
-    //fftw_free(input);
     fftw_free(output);
-    fftw_destroy_plan(plan);
-    fftw_destroy_plan(plan_inverse);
+    fftw_free(conjugatedData);
+
 
     // Release the JNI array
     env->ReleaseDoubleArrayElements(audioSamples, audioData, 0);
@@ -204,4 +201,18 @@ Java_com_example_licentachitara_MainActivity_FFTAnalyze(JNIEnv *env, jobject mai
 
     return freq;
 
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_example_licentachitara_MainActivity_destroyPlanFFT(JNIEnv *env, jobject thiz) {
+    if (plan != nullptr) {
+        fftw_destroy_plan(plan);
+        plan = nullptr;
+        LOGI("PLAN NORMAL DESTROYED");
+    }
+    if (plan_inverse != nullptr) {
+        fftw_destroy_plan(plan_inverse);
+        plan_inverse = nullptr;
+        LOGI("PLAN INVERSE DESTROYED");
+    }
 }
